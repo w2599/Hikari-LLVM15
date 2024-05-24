@@ -1,0 +1,33 @@
+name: build
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-13
+    steps:
+      - name: Pre xcode-select
+        run: |
+          sudo xcode-select --switch /Applications/Xcode_14.2.app
+
+      - name: Build
+        run: |
+          set -x
+          brew install ninja cmake 
+          git clone --recursive -b llvm-15.0.2rel https://github.com/61bcdefg/Hikari-LLVM15.git Hikari
+          cd Hikari && git submodule update --remote --recursive && cd ../
+          mkdir Build && cd Build
+          cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DLLVM_CREATE_XCODE_TOOLCHAIN=ON -DLLVM_ENABLE_PROJECTS="clang" -DLLVM_TARGETS_TO_BUILD="X86;ARM;AArch64" -DLLVM_ENABLE_RUNTIMES="compiler-rt" -DLLVM_INCLUDE_TESTS=OFF -DCMAKE_OSX_DEPLOYMENT_TARGET=12.5 -DLLVM_INCLUDE_EXAMPLES=OFF -DCMAKE_INSTALL_PREFIX=~/Library/Developer/ ../Hikari/llvm 
+          ninja
+          zip -r archive.zip .
+          cp archive.zip ${{ github.workspace }}
+
+
+      - name: Upload Latest Artifact
+        id: dopamine-latest-upload
+        uses: actions/upload-artifact@main
+        with:
+          name: archive.zip
+          path: |
+            ${{ github.workspace }}/archive.zip
